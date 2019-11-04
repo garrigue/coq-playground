@@ -379,9 +379,22 @@ Inductive tr_clos (A : Type) (P : A -> A -> Prop) : A -> A -> Prop :=
 | tr_refl : forall x, tr_clos P x x
 | tr_step : forall x y z, P x y -> tr_clos P y z -> tr_clos P x z.
 
-Lemma tr_clos_trans A P x y z :
+Lemma tr_clos_trans A P y x z :
   @tr_clos A P x y -> tr_clos P y z -> tr_clos P x z.
-Proof. elim => {x y} // x x1 y Hx Hx1 IH /IH; exact: tr_step. Qed.
+Proof. elim: x y / => // x x1 y Hx Hx1 IH /IH; exact: tr_step. Qed.
+
+Lemma lift_tr_clos A B f (P : A -> A -> Prop) (P' : B -> B -> Prop) x y :
+  (forall x y, P x y -> P' (f x) (f y)) ->
+  tr_clos P x y -> tr_clos P' (f x) (f y).
+Proof.
+move=> Hlf.
+elim: x y/.
+- by constructor.
+- move=> x y z Pxy _; by apply/tr_step/Hlf.
+Qed.
+
+Arguments tr_clos_trans {A} {P}.
+Arguments lift_tr_clos {A} {B}.
 
 Notation "t =>* t'" := (tr_clos (@beta1 _) t t')
                        (at level 70, no associativity).
@@ -391,20 +404,14 @@ Proof.
 elim=> /= {n t t'} [n k | n t t' H IH | n t1 t2 t1' t2' H1 IH1 H2 IH2
                                       | n t1 t1' t2 t2' H1 IH1 H2 IH2].
 - by constructor.
-- elim: IH {H} => {t t'}; try constructor. 
-  move=> t t1 t' Ht _; apply/tr_step; by constructor.
-- suff: App t1' t2 =>* App t1' t2'.
-    elim: IH1 {H1} => {t1 t1'} // t1 t11 t1' Ht1 _ IH /IH.
-    apply/tr_step; by constructor.
-  elim: IH2 {H1 IH1 H2} => {t2 t2'}.
-  + constructor; exact: refl_par.
-  + move=> t2 t21 t2' Ht2 _; apply/tr_step; by constructor.
-- suff: App (Abs t1') t2 =>* App (Abs t1') t2'.
-    elim: IH1 {H1} => {t1 t1'} t1.
-    + move=> H1. apply /(tr_clos_trans H1) /(tr_step (bbeta t1 t2')).
-      by constructor.
-    + move=> t11 t1' Ht1 _ IH /IH; apply/tr_step; by do! constructor.
-  elim: IH2 {H1 IH1 H2} => {t2 t2'}.
-  + constructor; exact: refl_par.
-  + move=> t2 t21 t2' Ht2 _; apply/tr_step; by constructor.
+- apply (lift_tr_clos (@Abs n) (@beta1 _)) => // *; by constructor.
+- apply (tr_clos_trans (App t1 t2')).
+    apply (lift_tr_clos (App t1) (@beta1 _)) => // *; by constructor.
+  apply (lift_tr_clos (@App n ^~ t2') (@beta1 _)) => // *; by constructor.
+- apply (tr_clos_trans (App (Abs t1) t2')).
+    apply (lift_tr_clos (App (Abs t1)) (@beta1 _)) => // *; by constructor.
+  apply (tr_clos_trans (App (Abs t1') t2')).
+    apply (lift_tr_clos (fun t1 => App (Abs t1) t2') (@beta1 _)) => // *.
+    by do! constructor.
+  apply/tr_step/tr_refl; by constructor.
 Qed.
