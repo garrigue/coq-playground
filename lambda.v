@@ -359,3 +359,52 @@ elim=> /= {n t t'} [n k | n t t' H IH | n t1 t2 t1' t2' H1 IH1 H2 IH2
   + by constructor.
 - exact: subst_fullpar.
 Qed.
+
+Lemma refl_par n (t : term n) : t =>p t.
+Proof.
+elim: t => {n} [n i | n t1 IH | n t1 IH1 t2 IH2] /=; by constructor.
+Qed.
+
+Lemma beta1_par n (t t' : term n) : t =>1 t' -> t =>p t'.
+Proof.
+elim=> /= {n t t'} [n t t' H IH | n t1 t2 t1' H1 IH1
+                   | n t1 t2 t2' H2 IH2 | n t1 t2].
+- by constructor.
+- constructor => //; exact: refl_par.
+- constructor => //; exact: refl_par.
+- constructor; exact: refl_par.
+Qed.
+
+Inductive tr_clos (A : Type) (P : A -> A -> Prop) : A -> A -> Prop :=
+| tr_refl : forall x, tr_clos P x x
+| tr_step : forall x y z, P x y -> tr_clos P y z -> tr_clos P x z.
+
+Lemma tr_clos_trans A P x y z :
+  @tr_clos A P x y -> tr_clos P y z -> tr_clos P x z.
+Proof. elim => {x y} // x x1 y Hx Hx1 IH /IH; exact: tr_step. Qed.
+
+Notation "t =>* t'" := (tr_clos (@beta1 _) t t')
+                       (at level 70, no associativity).
+
+Lemma par_beta n (t t' : term n) : t =>p t' -> t =>* t'.
+Proof.
+elim=> /= {n t t'} [n k | n t t' H IH | n t1 t2 t1' t2' H1 IH1 H2 IH2
+                                      | n t1 t1' t2 t2' H1 IH1 H2 IH2].
+- by constructor.
+- elim: IH {H} => {t t'}; try constructor. 
+  move=> t t1 t' Ht _; apply/tr_step; by constructor.
+- suff: App t1' t2 =>* App t1' t2'.
+    elim: IH1 {H1} => {t1 t1'} // t1 t11 t1' Ht1 _ IH /IH.
+    apply/tr_step; by constructor.
+  elim: IH2 {H1 IH1 H2} => {t2 t2'}.
+  + constructor; exact: refl_par.
+  + move=> t2 t21 t2' Ht2 _; apply/tr_step; by constructor.
+- suff: App (Abs t1') t2 =>* App (Abs t1') t2'.
+    elim: IH1 {H1} => {t1 t1'} t1.
+    + move=> H1. apply /(tr_clos_trans H1) /(tr_step (bbeta t1 t2')).
+      by constructor.
+    + move=> t11 t1' Ht1 _ IH /IH; apply/tr_step; by do! constructor.
+  elim: IH2 {H1 IH1 H2} => {t2 t2'}.
+  + constructor; exact: refl_par.
+  + move=> t2 t21 t2' Ht2 _; apply/tr_step; by constructor.
+Qed.
