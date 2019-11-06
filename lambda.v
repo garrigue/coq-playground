@@ -114,13 +114,11 @@ Lemma shiftC n (j k : 'I_n.+1) (t : term n) :
   shift (fit j) (shift k t) = shift (lift ord0 k) (shift j t).
 Proof.
 elim: t j k => {n} [n i | n t1 IH | n t1 IH1 t2 IH2] j k Hj /=.
-- f_equal; apply val_inj => /=.
+- congr Var; apply val_inj => /=.
   rewrite [RHS]bumpC.
   by rewrite /bump /unbump leq0n add1n ltnS ltnNge Hj (subn1 k.+1).
-- congr Abs.
-  rewrite -[RHS]IH //.
-  congr shift.
-  by apply val_inj.
+- congr Abs; rewrite -[RHS]IH //.
+  congr shift; by apply val_inj.
 - by rewrite IH1 // IH2.
 Qed.
 
@@ -137,11 +135,8 @@ case: t => [i | t | t1 t2] /= Hh.
   + by rewrite unlift_none.
   + case: unliftP => /= [l|].
       move/(f_equal (@nat_of_ord _)) => /=.
-      set k' := bump j k.
-      rewrite bumpC bumpK.
-      move/(can_inj (@bumpK _)) => Hl.
-      congr Var.
-      exact: val_inj.
+      rewrite bumpC bumpK => /(can_inj (@bumpK _)) Hl.
+      congr Var; exact: val_inj.
     move/lift_inj => /esym /eqP Hj.
     by elim: (negP (neq_lift j m)).
 - congr Abs.
@@ -173,20 +168,18 @@ elim/lt_wf_ind: h n k j t' t Hh => h IH n k j t' t.
 case: t => [i | t | t1 t2] /= Hh.
 - case: unliftP => /= [m|] -> {i}; last first.
   + case: unliftP => /= [l|] /(f_equal (@nat_of_ord _)) //=.
-    rewrite /(bump 0) leq0n add1n /(bump j.+1).
-    case Hjk: (j < k).
-      rewrite add1n /bump (leqNgt k) ltnNge leq_eqVlt Hjk orbT add0n => /eqP H.
-      by elim: (negP (neq_bump j l)).
-    rewrite add0n => /eqP H.
-    by elim: (negP (neq_bump (bump k j) l)).
+    rewrite /(bump 0) leq0n add1n /(bump j.+1) => H.
+    elim (negP (neq_bump (bump k j) l)); rewrite -H.
+    case Hjk: (j < k) => //=.
+    by rewrite /bump (leqNgt k) Hjk ltnNge (ltnW Hjk).
   + case: unliftP => /= [l|] /(f_equal (@nat_of_ord _)) /=.
       move=> Hl; congr Var; apply val_inj => /=.
       apply (can_inj (bumpK (bump k j))).
       rewrite -{}Hl /(bump 0) leq0n add1n bumpC bumpK.
       congr bump; rewrite /(bump k) leqNgt /bump.
       case Hjk: (j < k).
-        by rewrite add0n leq_eqVlt Hjk orbT.
-      by rewrite add1n Hjk.
+        by rewrite (ltnW Hjk).
+      by rewrite Hjk.
     rewrite /(bump 0) leq0n add1n /(bump j.+1).
     case Hjk: (j < k).
       rewrite add1n /(bump k) leqNgt Hjk add0n bumpC.
